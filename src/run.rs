@@ -117,7 +117,8 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
             match event {
                 Event::SelectionRequest(event) => {
                     let read_map = try_continue!(setmap.read().ok());
-                    let &(target, ref value) = try_continue!(read_map.get(&event.selection));
+                    let target = event.target;
+                    let ref value = try_continue!(try_continue!(read_map.get(&event.selection)).get(&target))[..];
 
                     if event.target == context.atoms.targets {
                         let _ = x11rb::wrapper::ConnectionExt::change_property32(
@@ -184,7 +185,10 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                     let is_end = {
                         let state = try_continue!(state_map.get_mut(&event.atom));
                         let read_setmap = try_continue!(setmap.read().ok());
-                        let &(target, ref value) = try_continue!(read_setmap.get(&state.selection));
+                        let targets_map = try_continue!(read_setmap.get(&state.selection));
+                        let entry = try_continue!(targets_map.get_key_value(try_continue!(targets_map.keys().next())));
+                        let target = *entry.0;
+                        let ref value = entry.1[..];
 
                         let len = cmp::min(INCR_CHUNK_SIZE, value.len() - state.pos);
                         let _ = x11rb::wrapper::ConnectionExt::change_property8(

@@ -23,7 +23,7 @@ use run::{create_pipe_drop_fd, PipeDropFds};
 
 pub const INCR_CHUNK_SIZE: usize = 4000;
 const POLL_DURATION: u64 = 50;
-type SetMap = Arc<RwLock<HashMap<Atom, (Atom, Vec<u8>)>>>;
+type SetMap = Arc<RwLock<HashMap<Atom, HashMap<Atom, Vec<u8>>>>>;
 
 #[derive(Clone, Debug)]
 pub struct Atoms {
@@ -361,10 +361,45 @@ impl Clipboard {
         -> Result<(), Error>
     {
         self.send.send(selection)?;
+        let mut v = HashMap::new();
+        v.insert(target, value.into());
         self.setmap
             .write()
             .map_err(|_| Error::Lock)?
-            .insert(selection, (target, value.into()));
+            .insert(selection, v);
+
+        self.setter.connection.set_selection_owner(
+            self.setter.window,
+            selection,
+            CURRENT_TIME
+        )?.check()?;
+
+        if self.setter.connection.get_selection_owner(
+            selection
+        )?.reply()
+            .map(|reply| reply.owner == self.setter.window)
+            .unwrap_or(false) {
+            Ok(())
+        } else {
+            Err(Error::Owner)
+        }
+    }
+
+    /// store multiple values.
+    pub fn store_multiple<T: Into<Vec<u8>>>(&self, selection: Atom, target_map: HashMap<Atom, T>)
+        -> Result<(), Error>
+    {
+        self.send.send(selection)?;
+        let mut v = HashMap::new();
+        
+        for kv in target_map {
+            v.insert(kv.0, kv.1.into());
+        }
+
+        self.setmap
+            .write()
+            .map_err(|_| Error::Lock)?
+            .insert(selection, v);
 
         self.setter.connection.set_selection_owner(
             self.setter.window,
