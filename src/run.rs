@@ -119,16 +119,23 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                 Event::SelectionRequest(event) => {
                     let read_map = try_continue!(setmap.read().ok());
                     let target = event.target;
-                    let ref value = try_continue!(try_continue!(read_map.get(&event.selection)).get(&target))[..];
+                    let supported_targets = try_continue!(read_map.get(&event.selection));
+                    let ref value = try_continue!(supported_targets.get(&target))[..];
 
                     if target == context.atoms.targets {
+                        let mut targets = vec![context.atoms.targets];
+
+                        for kv in supported_targets {
+                            targets.push(*kv.0);
+                        }
+                        
                         let _ = x11rb::wrapper::ConnectionExt::change_property32(
                             &context.connection,
                             PropMode::REPLACE,
                             event.requestor,
                             event.property,
                             Atom::from(AtomEnum::ATOM),
-                            &[context.atoms.targets, target]
+                            &targets[..]
                         );
                     } else if value.len() < max_length - 24 {
                         let _ = x11rb::wrapper::ConnectionExt::change_property8(
