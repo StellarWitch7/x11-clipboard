@@ -120,85 +120,66 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                     let read_map = try_continue!(setmap.read().ok());
                     let supported_targets = match read_map.get(&event.selection) {
                         Some(v) => v,
-                        None => {
-                            let _ = x11rb::wrapper::ConnectionExt::change_property32(
-                                &context.connection,
-                                PropMode::REPLACE,
-                                event.requestor,
-                                event.property,
-                                Atom::from(AtomEnum::NONE),
-                                &[0u32; 0]
-                            );
-
-                            break;
-                        }
+                        None => &HashMap::new()
                     };
-                    let value = match supported_targets.get(&event.target) {
-                        Some(v) => &v[..],
-                        None => {
-                            let _ = x11rb::wrapper::ConnectionExt::change_property32(
-                                &context.connection,
-                                PropMode::REPLACE,
-                                event.requestor,
-                                event.property,
-                                Atom::from(AtomEnum::NONE),
-                                &[0u32; 0]
-                            );
+                    let value = supported_targets.get(&event.target);
 
-                            break;
-                        }
-                    };
-
-                    if event.target == context.atoms.targets {
-                        let mut targets = vec![context.atoms.targets];
-
-                        for kv in supported_targets {
-                            targets.push(*kv.0);
-                        }
-                        
-                        let _ = x11rb::wrapper::ConnectionExt::change_property32(
-                            &context.connection,
-                            PropMode::REPLACE,
-                            event.requestor,
-                            event.property,
-                            Atom::from(AtomEnum::ATOM),
-                            &targets[..]
-                        );
-                    } else if value.len() < max_length - 24 {
-                        let _ = x11rb::wrapper::ConnectionExt::change_property8(
-                            &context.connection,
-                            PropMode::REPLACE,
-                            event.requestor,
-                            event.property,
-                            event.target,
-                            value
-                        );
-                    } else {
-                        let _ = context.connection.change_window_attributes(
-                            event.requestor,
-                            &ChangeWindowAttributesAux::new()
-                                .event_mask(EventMask::PROPERTY_CHANGE)
-                        );
-                        let _ = x11rb::wrapper::ConnectionExt::change_property32(
-                            &context.connection,
-                            PropMode::REPLACE,
-                            event.requestor,
-                            event.property,
-                            context.atoms.incr,
-                            &[0u32; 0],
-                        );
-                        incr_map.insert(event.selection, event.property);
-                        state_map.insert(
-                            event.property,
-                            IncrState {
-                                selection: event.selection,
-                                requestor: event.requestor,
-                                property: event.property,
-                                target: event.target,
-                                pos: 0
+                    match value {
+                        Some(value) => {
+                            if value.len() < max_length - 24 {
+                                let _ = x11rb::wrapper::ConnectionExt::change_property8(
+                                    &context.connection,
+                                    PropMode::REPLACE,
+                                    event.requestor,
+                                    event.property,
+                                    event.target,
+                                    value
+                                );
+                            } else {
+                                let _ = context.connection.change_window_attributes(
+                                    event.requestor,
+                                    &ChangeWindowAttributesAux::new()
+                                        .event_mask(EventMask::PROPERTY_CHANGE)
+                                );
+                                let _ = x11rb::wrapper::ConnectionExt::change_property32(
+                                    &context.connection,
+                                    PropMode::REPLACE,
+                                    event.requestor,
+                                    event.property,
+                                    context.atoms.incr,
+                                    &[0u32; 0],
+                                );
+                                incr_map.insert(event.selection, event.property);
+                                state_map.insert(
+                                    event.property,
+                                    IncrState {
+                                        selection: event.selection,
+                                        requestor: event.requestor,
+                                        property: event.property,
+                                        target: event.target,
+                                        pos: 0
+                                    }
+                                );
                             }
-                        );
+                        },
+                        None => {
+                            let mut targets = vec![context.atoms.targets];
+
+                            for kv in supported_targets {
+                                targets.push(*kv.0);
+                            }
+                            
+                            let _ = x11rb::wrapper::ConnectionExt::change_property32(
+                                &context.connection,
+                                PropMode::REPLACE,
+                                event.requestor,
+                                event.property,
+                                Atom::from(AtomEnum::ATOM),
+                                &targets[..]
+                            );
+                        }
                     }
+
                     let _ = context.connection.send_event(
                         false,
                         event.requestor,
@@ -218,7 +199,6 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                 Event::PropertyNotify(event) => {
                     if event.state != Property::DELETE { continue };
 
-                    println!("Fulfilling INCR");
                     let is_end = {
                         let state = try_continue!(state_map.get_mut(&event.atom));
                         let read_setmap = try_continue!(setmap.read().ok());
