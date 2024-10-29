@@ -133,8 +133,8 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             continue;
                         }
                     };
-                    let ref value = match supported_targets.get(&event.target) {
-                        Some(v) => v[..],
+                    let value = match supported_targets.get(&event.target) {
+                        Some(v) => &v[..],
                         None => {
                             let _ = x11rb::wrapper::ConnectionExt::change_property32(
                                 &context.connection,
@@ -225,7 +225,37 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                     let is_end = {
                         let state = try_continue!(state_map.get_mut(&event.atom));
                         let read_setmap = try_continue!(setmap.read().ok());
-                        let ref value = try_continue!(try_continue!(read_setmap.get(&state.selection)).get(&state.target))[..];
+                        let supported_targets = match read_setmap.get(&state.selection) {
+                            Some(v) => v,
+                            None => {
+                                let _ = x11rb::wrapper::ConnectionExt::change_property32(
+                                    &context.connection,
+                                    PropMode::REPLACE,
+                                    state.requestor,
+                                    state.property,
+                                    Atom::from(AtomEnum::NONE),
+                                    &[0u32; 0]
+                                );
+
+                                continue;
+                            }
+                        };
+                        let value = match supported_targets.get(&state.target) {
+                            Some(v) => &v[..],
+                            None => {
+                                let _ = x11rb::wrapper::ConnectionExt::change_property32(
+                                    &context.connection,
+                                    PropMode::REPLACE,
+                                    state.requestor,
+                                    state.property,
+                                    Atom::from(AtomEnum::NONE),
+                                    &[0u32; 0]
+                                );
+
+                                continue;
+                            }
+                        };
+
 
                         let len = cmp::min(INCR_CHUNK_SIZE, value.len() - state.pos);
                         let _ = x11rb::wrapper::ConnectionExt::change_property8(
