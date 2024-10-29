@@ -118,10 +118,8 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
             match event {
                 Event::SelectionRequest(event) => {
                     let read_map = try_continue!(setmap.read().ok());
-                    let supported_targets = match read_map.get(&event.selection) {
-                        Some(v) => v,
-                        None => &HashMap::new()
-                    };
+                    let supported_targets = &HashMap::new();
+                    let supported_targets = read_map.get(&event.selection).unwrap_or(supported_targets);
                     let value = supported_targets.get(&event.target);
 
                     match value {
