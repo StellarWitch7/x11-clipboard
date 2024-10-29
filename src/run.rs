@@ -19,7 +19,6 @@ macro_rules! try_continue {
     };
 }
 
-#[derive(Debug)]
 struct IncrState {
     selection: Atom,
     requestor: Window,
@@ -118,6 +117,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
 
             match event {
                 Event::SelectionRequest(event) => {
+                    println!("Program is requesting target {}", event.target);
                     let read_map = try_continue!(setmap.read().ok());
                     let supported_targets = try_continue!(read_map.get(&event.selection));
                     let ref value = try_continue!(supported_targets.get(&event.target))[..];
@@ -193,7 +193,6 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
 
                     let is_end = {
                         let state = try_continue!(state_map.get_mut(&event.atom));
-                        println!("Debug state: {:?}", state);
                         let read_setmap = try_continue!(setmap.read().ok());
                         let ref value = try_continue!(try_continue!(read_setmap.get(&state.selection)).get(&state.target))[..];
 
