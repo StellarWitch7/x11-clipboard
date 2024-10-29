@@ -118,11 +118,10 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
             match event {
                 Event::SelectionRequest(event) => {
                     let read_map = try_continue!(setmap.read().ok());
-                    let target = event.target;
                     let supported_targets = try_continue!(read_map.get(&event.selection));
-                    let ref value = try_continue!(supported_targets.get(&target))[..];
+                    let ref value = try_continue!(supported_targets.get(&event.target))[..];
 
-                    if target == context.atoms.targets {
+                    if event.target == context.atoms.targets {
                         let mut targets = vec![context.atoms.targets];
 
                         for kv in supported_targets {
@@ -143,7 +142,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             PropMode::REPLACE,
                             event.requestor,
                             event.property,
-                            target,
+                            event.target,
                             value
                         );
                     } else {
@@ -167,7 +166,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                                 selection: event.selection,
                                 requestor: event.requestor,
                                 property: event.property,
-                                target,
+                                target: event.target,
                                 pos: 0
                             }
                         );
@@ -194,8 +193,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                     let is_end = {
                         let state = try_continue!(state_map.get_mut(&event.atom));
                         let read_setmap = try_continue!(setmap.read().ok());
-                        let target = state.target;
-                        let ref value = try_continue!(try_continue!(read_setmap.get(&state.selection)).get(&target))[..];
+                        let ref value = try_continue!(try_continue!(read_setmap.get(&state.selection)).get(&state.target))[..];
 
                         let len = cmp::min(INCR_CHUNK_SIZE, value.len() - state.pos);
                         let _ = x11rb::wrapper::ConnectionExt::change_property8(
@@ -203,7 +201,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             PropMode::REPLACE,
                             state.requestor,
                             state.property,
-                            target,
+                            state.target,
                             &value[state.pos..][..len]
                         );
                         state.pos += len;
