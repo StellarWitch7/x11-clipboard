@@ -149,6 +149,8 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                         }
                     };
 
+                    println!("*sigh*");
+
                     if event.target == context.atoms.targets {
                         println!("Sending TARGETS to requestor");
                         let mut targets = vec![context.atoms.targets];
