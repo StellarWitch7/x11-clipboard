@@ -117,12 +117,12 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
 
             match event {
                 Event::SelectionRequest(event) => {
-                    println!("Program is requesting target {}", event.target);
                     let read_map = try_continue!(setmap.read().ok());
                     let supported_targets = try_continue!(read_map.get(&event.selection));
                     let ref value = try_continue!(supported_targets.get(&event.target))[..];
 
                     if event.target == context.atoms.targets {
+                        println!("Sending TARGETS to requestor");
                         let mut targets = vec![context.atoms.targets];
 
                         for kv in supported_targets {
@@ -138,6 +138,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             &targets[..]
                         );
                     } else if value.len() < max_length - 24 {
+                        println!("Sending data in one shot to requestor as size is sufficiently small");
                         let _ = x11rb::wrapper::ConnectionExt::change_property8(
                             &context.connection,
                             PropMode::REPLACE,
@@ -147,6 +148,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             value
                         );
                     } else {
+                        println!("Sending INCR message to requestor as data is too large");
                         let _ = context.connection.change_window_attributes(
                             event.requestor,
                             &ChangeWindowAttributesAux::new()
@@ -191,6 +193,7 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                 Event::PropertyNotify(event) => {
                     if event.state != Property::DELETE { continue };
 
+                    println!("Fulfilling INCR");
                     let is_end = {
                         let state = try_continue!(state_map.get_mut(&event.atom));
                         let read_setmap = try_continue!(setmap.read().ok());
