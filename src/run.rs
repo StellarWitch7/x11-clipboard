@@ -130,12 +130,9 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                                 &[0u32; 0]
                             );
 
-                            continue;
+                            break;
                         }
                     };
-                    println!("
-                        rah
-                        ");
                     let value = match supported_targets.get(&event.target) {
                         Some(v) => &v[..],
                         None => {
@@ -148,12 +145,11 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                                 &[0u32; 0]
                             );
 
-                            continue;
+                            break;
                         }
                     };
 
                     if event.target == context.atoms.targets {
-                        println!("Sending TARGETS to requestor");
                         let mut targets = vec![context.atoms.targets];
 
                         for kv in supported_targets {
@@ -169,7 +165,6 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             &targets[..]
                         );
                     } else if value.len() < max_length - 24 {
-                        println!("Sending data in one shot to requestor as size is sufficiently small");
                         let _ = x11rb::wrapper::ConnectionExt::change_property8(
                             &context.connection,
                             PropMode::REPLACE,
@@ -179,7 +174,6 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             value
                         );
                     } else {
-                        println!("Sending INCR message to requestor as data is too large");
                         let _ = context.connection.change_window_attributes(
                             event.requestor,
                             &ChangeWindowAttributesAux::new()
