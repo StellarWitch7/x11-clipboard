@@ -133,6 +133,9 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             continue;
                         }
                     };
+                    println!("
+                        rah
+                        ");
                     let value = match supported_targets.get(&event.target) {
                         Some(v) => &v[..],
                         None => {
@@ -148,8 +151,6 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
                             continue;
                         }
                     };
-
-                    println!("*sigh*");
 
                     if event.target == context.atoms.targets {
                         println!("Sending TARGETS to requestor");
