@@ -19,6 +19,7 @@ macro_rules! try_continue {
     };
 }
 
+#[derive(Debug)]
 struct IncrState {
     selection: Atom,
     requestor: Window,
