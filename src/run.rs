@@ -118,8 +118,36 @@ pub(crate) fn run(context: Arc<Context>, setmap: SetMap, max_length: usize, rece
             match event {
                 Event::SelectionRequest(event) => {
                     let read_map = try_continue!(setmap.read().ok());
-                    let supported_targets = try_continue!(read_map.get(&event.selection));
-                    let ref value = try_continue!(supported_targets.get(&event.target))[..];
+                    let supported_targets = match read_map.get(&event.selection) {
+                        Some(v) => v,
+                        None => {
+                            let _ = x11rb::wrapper::ConnectionExt::change_property32(
+                                &context.connection,
+                                PropMode::REPLACE,
+                                event.requestor,
+                                event.property,
+                                Atom::from(AtomEnum::NONE),
+                                &[0u32; 0]
+                            );
+
+                            continue;
+                        }
+                    };
+                    let ref value = match supported_targets.get(&event.target) {
+                        Some(v) => v[..],
+                        None => {
+                            let _ = x11rb::wrapper::ConnectionExt::change_property32(
+                                &context.connection,
+                                PropMode::REPLACE,
+                                event.requestor,
+                                event.property,
+                                Atom::from(AtomEnum::NONE),
+                                &[0u32; 0]
+                            );
+
+                            continue;
+                        }
+                    };
 
                     if event.target == context.atoms.targets {
                         println!("Sending TARGETS to requestor");
